@@ -1,66 +1,64 @@
-"use server";
-import { cookies } from "next/headers";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { Database } from "@/database.types";
-import { z } from "zod";
-import { zact } from "zact/server";
-import { revalidatePath } from "next/cache";
+"use server"
+import { cookies } from "next/headers"
+import { z } from "zod"
+import { zact } from "zact/server"
+import { revalidatePath } from "next/cache"
+import { sql } from "drizzle-orm"
+import Pusher from "pusher"
+
+import db from "~/database/db"
+import { user, message } from "~/database/schema"
+import env from "~/env.mjs"
 
 const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
-  async ({ content }) => {
-    const supabase = createServerActionClient<Database>(
-      { cookies },
-      {
-        supabaseUrl: process.env.SUPABASE_URL,
-        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      }
-    );
+	async ({ content }) => {
+		const [userId, id] = await Promise.all([
+			db
+				.select({ count: sql<number>`count(*)` })
+				.from(user)
+				.then(([row]) => row?.count),
+			db
+				.select({ count: sql<number>`count(*)` })
+				.from(message)
+				.then(([row]) => row?.count),
+		])
 
-    const userId = await supabase
-      .from("user")
-      .insert({
-        id:
-          (
-            await supabase
-              .from("user")
-              .select("*", { count: "exact", head: true })
-          ).count ?? -1,
-      })
-      .select()
-      .then(({ data }) => {
-        const user = data?.[0];
+		if (userId === undefined || id === undefined)
+			throw new Error("Failed counting number of users or messages")
 
-        if (user === undefined) throw new Error("Failed to create user");
+		const sentAt = new Date()
 
-        cookies().set("user_id", user.id.toString());
+		new Pusher({
+			appId: env.SOKETI_APP_ID,
+			key: env.NEXT_PUBLIC_SOKETI_APP_KEY,
+			secret: env.SOKETI_APP_SECRET,
+			useTLS: true,
+			host: env.NEXT_PUBLIC_SOKETI_HOST,
+			port: env.NEXT_PUBLIC_SOKETI_PORT.toString(),
+		}).trigger("chat", "message", {
+			id,
+			userId,
+			content,
+			sentAt,
+		})
 
-        return user.id;
-      });
+		await Promise.all([
+			db.insert(user).values({
+				id: userId,
+				createdAt: new Date(),
+			}),
+			db.insert(message).values({
+				id,
+				userId,
+				content,
+				sentAt,
+			}),
+		])
 
-    await supabase
-      .from("message")
-      .select("*", { count: "exact", head: true })
-      .then(({ count }) =>
-        Promise.all([
-          supabase.from("message").insert({
-            id: count ?? -1,
-            user_id: userId,
-            content,
-          }),
-          supabase.realtime
-            .channel("message")
-            .subscribe()
-            .send({
-              type: "message",
-              id: count ?? -1,
-              user_id: userId,
-              content,
-            }),
-        ])
-      );
+		cookies().set("user_id", userId?.toString())
 
-    revalidatePath("/");
-  }
-);
+		revalidatePath("/")
+	}
+)
 
-export default sendFirstMessageAction;
+export default sendFirstMessageAction

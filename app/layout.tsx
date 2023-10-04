@@ -1,18 +1,18 @@
-import "./globals.css";
+import "./globals.css"
 
 export const metadata = {
-  title: "highchat",
-  description: "send a message to your high school",
-};
+	title: "highchat",
+	description: "send a message to your high school",
+}
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode
 }) {
-  return (
-    <html lang="en">
-      <body className="absolute inset-0 overscroll-none">{children}</body>
-    </html>
-  );
+	return (
+		<html lang="en">
+			<body className="absolute inset-0">{children}</body>
+		</html>
+	)
 }

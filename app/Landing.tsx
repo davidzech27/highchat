@@ -1,46 +1,46 @@
-"use client";
-import { useState } from "react";
+"use client"
+import { useState } from "react"
 
-import sendFirstMessageAction from "./sendFirstMessageAction";
+import sendFirstMessageAction from "./sendFirstMessageAction"
 
 export default function Landing() {
-  const [messageInput, setMessageInput] = useState("");
+	const [messageInput, setMessageInput] = useState("")
 
-  const disabled = messageInput === "";
+	const disabled = messageInput === ""
 
-  const onSubmit = () => {
-    if (disabled) return;
+	const onSubmit = () => {
+		if (disabled) return
 
-    sendFirstMessageAction({ content: messageInput });
-  };
+		sendFirstMessageAction({ content: messageInput })
+	}
 
-  return (
-    <main className="flex bg-primary justify-center items-center flex-col h-screen">
-      <h1 className="text-secondary text-5xl font-bold">
-        send a message to your high school
-      </h1>
+	return (
+		<main className="flex h-screen flex-col items-center justify-center bg-primary">
+			<h1 className="text-5xl font-bold text-secondary">
+				send a message to your high school
+			</h1>
 
-      <div className="py-4" />
+			<div className="py-4" />
 
-      <form onSubmit={onSubmit} className="flex space-x-2">
-        <input
-          type="text"
-          value={messageInput}
-          onChange={(e) => setMessageInput(e.target.value)}
-          aria-required
-          aria-aria-label="send a message to your high school"
-          placeholder="hey"
-          className="rounded-lg font-medium placeholder:select-none placeholder:text-white/50 placeholder:font-light py-2 text-lg px-3 outline-0 focus:bg-white/30 transition text-white focus:placeholder:text-white/60 border-white border bg-white/20"
-        />
+			<form onSubmit={onSubmit} className="flex space-x-2">
+				<input
+					type="text"
+					value={messageInput}
+					onChange={(e) => setMessageInput(e.target.value)}
+					aria-required
+					aria-label="send a message to your high school"
+					placeholder="hey"
+					className="rounded-lg border border-white bg-white/20 px-3 py-2 text-lg font-medium text-white outline-0 transition placeholder:select-none placeholder:font-light placeholder:text-white/50 focus:bg-white/30 focus:placeholder:text-white/60"
+				/>
 
-        <button
-          type="submit"
-          disabled={disabled}
-          className="rounded-lg select-none disabled:opacity-50 disabled:pointer-events-none text-lg px-4 font-bold focus-visible:bg-white/30 hover:bg-white/30 transition text-white border-white border bg-white/20"
-        >
-          send
-        </button>
-      </form>
-    </main>
-  );
+				<button
+					type="submit"
+					disabled={disabled}
+					className="select-none rounded-lg border border-white bg-white/20 px-4 text-lg font-bold text-white transition hover:bg-white/30 focus-visible:bg-white/30 disabled:pointer-events-none disabled:opacity-50"
+				>
+					send
+				</button>
+			</form>
+		</main>
+	)
 }

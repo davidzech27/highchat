@@ -1,50 +1,57 @@
-"use server";
-import { cookies } from "next/headers";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { Database } from "@/database.types";
-import { z } from "zod";
-import { zact } from "zact/server";
+"use server"
+import { cookies } from "next/headers"
+import { z } from "zod"
+import { zact } from "zact/server"
+import { sql } from "drizzle-orm"
+import Pusher from "pusher"
+
+import db from "~/database/db"
+import { message } from "~/database/schema"
+import env from "~/env.mjs"
 
 const sendMessageAction = zact(z.object({ content: z.string() }))(
-  async ({ content }) => {
-    const supabase = createServerActionClient<Database>(
-      { cookies },
-      {
-        supabaseUrl: process.env.SUPABASE_URL,
-        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      }
-    );
+	async ({ content }) => {
+		const userIdString = cookies().get("user_id")?.value
 
-    const userIdString = cookies().get("user_id")?.value;
+		const userId =
+			userIdString !== undefined ? Number(userIdString) : undefined
 
-    const userId =
-      userIdString !== undefined ? Number(userIdString) : undefined;
+		if (userId === undefined) throw new Error("Unauthenticated")
 
-    if (userId === undefined) throw new Error("Unauthenticated");
+		const id = (
+			await db.select({ count: sql<number>`count(*)` }).from(message)
+		)[0]?.count
 
-    const [id] = await Promise.all([
-      supabase
-        .from("message")
-        .select("*", { count: "exact", head: true })
-        .then(async ({ count }) => {
-          const id = count ?? -1;
+		if (id === undefined)
+			throw new Error("Failed counting number of messages")
 
-          await supabase
-            .from("message")
-            .insert({ id, user_id: userId, content });
+		const sentAt = new Date()
 
-          return id;
-        }),
-      supabase.realtime
-        .channel("message")
-        .subscribe()
-        .send({ type: "message", userId, content }),
-    ]);
+		new Pusher({
+			appId: env.SOKETI_APP_ID,
+			key: env.NEXT_PUBLIC_SOKETI_APP_KEY,
+			secret: env.SOKETI_APP_SECRET,
+			useTLS: true,
+			host: env.NEXT_PUBLIC_SOKETI_HOST,
+			port: env.NEXT_PUBLIC_SOKETI_PORT.toString(),
+		}).trigger("chat", "message", {
+			id,
+			userId,
+			content,
+			sentAt,
+		})
 
-    return {
-      id,
-    };
-  }
-);
+		await db.insert(message).values({
+			id,
+			userId,
+			content,
+			sentAt,
+		})
 
-export default sendMessageAction;
+		return {
+			id,
+		}
+	}
+)
+
+export default sendMessageAction
