@@ -1,6 +1,6 @@
 "use server"
 import { cookies } from "next/headers"
-import { revalidatePath } from "next/cache"
+// import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { zact } from "zact/server"
 import { sql } from "drizzle-orm"
@@ -12,7 +12,7 @@ import env from "~/env.mjs"
 
 const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 	async ({ content }) => {
-		revalidatePath("/")
+		// revalidatePath("/")
 
 		const [userId, id] = await Promise.all([
 			db

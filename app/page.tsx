@@ -5,7 +5,7 @@ import { message } from "~/database/schema"
 import Landing from "./Landing"
 import Chat from "./Chat"
 
-export const runtime = "edge"
+// export const runtime = "edge"
 
 export default async function Index() {
 	const userIdString = cookies().get("user_id")?.value
