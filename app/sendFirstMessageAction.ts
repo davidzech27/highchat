@@ -28,7 +28,12 @@ const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 		if (userId === undefined || id === undefined)
 			throw new Error("Failed counting number of users or messages")
 
-		cookies().set("user_id", userId?.toString())
+		cookies().set("user_id", userId?.toString(), {
+			httpOnly: true,
+			sameSite: true,
+			expires: new Date().valueOf() + 1000 * 60 * 60 * 24 * 400,
+			secure: env.NODE_ENV === "production",
+		})
 
 		const sentAt = new Date()
 
