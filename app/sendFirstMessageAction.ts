@@ -1,8 +1,8 @@
 "use server"
 import { cookies } from "next/headers"
+import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { zact } from "zact/server"
-import { revalidatePath } from "next/cache"
 import { sql } from "drizzle-orm"
 import Pusher from "pusher"
 
@@ -12,6 +12,8 @@ import env from "~/env.mjs"
 
 const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 	async ({ content }) => {
+		revalidatePath("/")
+
 		const [userId, id] = await Promise.all([
 			db
 				.select({ count: sql<number>`count(*)` })
@@ -25,6 +27,8 @@ const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 
 		if (userId === undefined || id === undefined)
 			throw new Error("Failed counting number of users or messages")
+
+		cookies().set("user_id", userId?.toString())
 
 		const sentAt = new Date()
 
@@ -54,10 +58,6 @@ const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 				sentAt,
 			}),
 		])
-
-		cookies().set("user_id", userId?.toString())
-
-		revalidatePath("/")
 	}
 )
 

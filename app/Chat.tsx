@@ -1,10 +1,9 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
-import PusherJS from "pusher-js"
 
-import sendMessageAction from "./sendMessageAction"
 import env from "~/env.mjs"
+import sendMessageAction from "./sendMessageAction"
 
 interface Props {
 	userId: number
@@ -40,34 +39,40 @@ export default function Chat({
 	const disabled = messageInput === ""
 
 	useEffect(() => {
-		const channel = new PusherJS(env.NEXT_PUBLIC_SOKETI_APP_KEY, {
-			wsHost: env.NEXT_PUBLIC_SOKETI_HOST,
-			wsPort: env.NEXT_PUBLIC_SOKETI_PORT,
-			wssPort: env.NEXT_PUBLIC_SOKETI_PORT,
-			forceTLS: true,
-			disableStats: true,
-			enabledTransports: ["ws", "wss"],
-		})
-			.subscribe("chat")
-			.bind("message", (message: unknown) => {
-				const messageParsed = messageSchema.safeParse(message)
-
-				if (messageParsed.success) {
-					setMessages((prevMessages) => {
-						if (
-							prevMessages.find(
-								(message) =>
-									message.id === messageParsed.data.id
-							) !== undefined
-						)
-							return prevMessages
-
-						return [...prevMessages, messageParsed.data]
-					})
-				}
+		const channelPromise = import("pusher-js").then(({ default: Pusher }) =>
+			new Pusher(env.NEXT_PUBLIC_SOKETI_APP_KEY, {
+				wsHost: env.NEXT_PUBLIC_SOKETI_HOST,
+				wsPort: env.NEXT_PUBLIC_SOKETI_PORT,
+				wssPort: env.NEXT_PUBLIC_SOKETI_PORT,
+				forceTLS: true,
+				disableStats: true,
+				enabledTransports: ["ws", "wss"],
 			})
+				.subscribe("chat")
+				.bind("message", (message: unknown) => {
+					const messageParsed = messageSchema.safeParse(message)
 
-		return () => channel.unsubscribe()
+					if (messageParsed.success) {
+						setMessages((prevMessages) => {
+							if (
+								prevMessages.find(
+									(message) =>
+										message.id === messageParsed.data.id
+								) !== undefined
+							)
+								return prevMessages
+
+							setMessagesSent((prev) => prev + 1)
+
+							return [...prevMessages, messageParsed.data]
+						})
+					}
+				})
+		)
+
+		return () => {
+			channelPromise.then((channel) => channel.unsubscribe())
+		}
 	}, [])
 
 	const onSubmit = async () => {

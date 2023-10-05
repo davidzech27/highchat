@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import sendFirstMessageAction from "./sendFirstMessageAction"
 
@@ -8,10 +9,16 @@ export default function Landing() {
 
 	const disabled = messageInput === ""
 
-	const onSubmit = () => {
+	const router = useRouter()
+
+	const onSubmit = async () => {
 		if (disabled) return
 
-		sendFirstMessageAction({ content: messageInput })
+		await sendFirstMessageAction({
+			content: messageInput,
+		})
+
+		router.refresh()
 	}
 
 	return (
@@ -22,7 +29,14 @@ export default function Landing() {
 
 			<div className="py-4" />
 
-			<form onSubmit={onSubmit} className="flex space-x-2">
+			<form
+				onSubmit={(e) => {
+					e.preventDefault()
+
+					onSubmit()
+				}}
+				className="flex space-x-2"
+			>
 				<input
 					type="text"
 					value={messageInput}
