@@ -14,6 +14,7 @@ interface Props {
 		sentAt: Date
 	}[]
 	initialMessagesSent: number
+	initialEndDate: Date
 }
 
 const messageSchema = z.object({
@@ -21,12 +22,14 @@ const messageSchema = z.object({
 	userId: z.number(),
 	content: z.string(),
 	sentAt: z.coerce.date(),
+	firstMessage: z.boolean().optional(),
 })
 
 export default function Chat({
 	userId,
 	initialMessages,
 	initialMessagesSent,
+	initialEndDate,
 }: Props) {
 	const [messageInput, setMessageInput] = useState("")
 
@@ -64,6 +67,18 @@ export default function Chat({
 
 							setMessagesSent((prev) => prev + 1)
 
+							setEndDate(
+								(prev) => new Date(prev.valueOf() - 1000 * 60)
+							)
+
+							if (messageParsed.data.firstMessage)
+								setEndDate(
+									(prev) =>
+										new Date(
+											prev.valueOf() - 1000 * 60 * 60 * 8
+										)
+								)
+
 							return [...prevMessages, messageParsed.data]
 						})
 					}
@@ -81,6 +96,8 @@ export default function Chat({
 		setMessageInput("")
 
 		setMessagesSent((prev) => prev + 1)
+
+		setEndDate((prev) => new Date(prev.valueOf() - 1000 * 60))
 
 		const optimisticId = optimisticMessages * -1 - 1
 
@@ -121,6 +138,24 @@ export default function Chat({
 		})
 	}
 
+	const [endDate, setEndDate] = useState(initialEndDate)
+
+	const [secondsLeft, setSecondsLeft] = useState(
+		Math.floor((endDate.valueOf() - new Date().valueOf()) / 1000)
+	)
+
+	useEffect(() => {
+		const intervalId = setInterval(() => {
+			setSecondsLeft(
+				Math.floor((endDate.valueOf() - new Date().valueOf()) / 1000)
+			)
+		}, 1000)
+
+		return () => {
+			clearInterval(intervalId)
+		}
+	}, [endDate])
+
 	const scrollerRef = useRef<HTMLDivElement>(null)
 
 	useEffect(() => {
@@ -154,6 +189,12 @@ export default function Chat({
 				</span>
 
 				<span className="text-2xl font-bold leading-none text-secondary">
+					{Math.floor(secondsLeft / (24 * 60 ** 2))}:
+					{Math.floor(secondsLeft / 60 ** 2) % 24}:
+					{Math.floor(secondsLeft / 60) % 60}:{secondsLeft % 60}
+				</span>
+
+				<span className="text-2xl font-bold leading-none text-secondary">
 					{messagesSent}
 				</span>
 			</div>
@@ -183,6 +224,32 @@ export default function Chat({
 						<p className="break-words font-medium text-white">
 							{message.content}
 						</p>
+
+						<div className="flex justify-end">
+							<span className="text-lg font-bold leading-none text-secondary">
+								{(() => {
+									const secondsAgo =
+										(new Date().valueOf() -
+											message.sentAt.valueOf()) / 1000
+
+									if (secondsAgo < 60)
+										return `${Math.floor(secondsAgo)}s`
+									if (secondsAgo / 60 < 60)
+										return `${Math.floor(secondsAgo / 60)}m`
+									if (secondsAgo / 60 ** 2 < 60)
+										return `${Math.floor(
+											secondsAgo / 60 ** 2
+										)}h`
+									if (secondsAgo / (24 * 60 ** 2) < 60)
+										return `${Math.floor(
+											secondsAgo / (24 * 60 ** 2)
+										)}d`
+									return `${Math.floor(
+										secondsAgo / (7 * 24 * 60 ** 2)
+									)}w`
+								})()}
+							</span>
+						</div>
 					</div>
 				))}
 			</div>

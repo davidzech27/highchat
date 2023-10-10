@@ -1,18 +1,27 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 import sendFirstMessageAction from "./sendFirstMessageAction"
+import env from "~/env.mjs"
 
-export default function Landing() {
+interface Props {
+initialUserCount: number
+}
+
+export default function Landing({initialUserCount}: Props) {
 	const [messageInput, setMessageInput] = useState("")
 
-	const disabled = messageInput === ""
+	const [submitted, setSubmitted] = useState(false)
+
+	const disabled = messageInput === "" || submitted
 
 	const router = useRouter()
 
 	const onSubmit = async () => {
 		if (disabled) return
+
+		setSubmitted(true)
 
 		await sendFirstMessageAction({
 			content: messageInput,
@@ -20,6 +29,34 @@ export default function Landing() {
 
 		router.refresh()
 	}
+
+	const [userCount, setUserCount] = useState(initialUserCount)
+
+	useEffect(() => {
+		const channelPromise = import("pusher-js").then(({ default: Pusher }) =>
+			new Pusher(env.NEXT_PUBLIC_SOKETI_APP_KEY, {
+				wsHost: env.NEXT_PUBLIC_SOKETI_HOST,
+				wsPort: env.NEXT_PUBLIC_SOKETI_PORT,
+				wssPort: env.NEXT_PUBLIC_SOKETI_PORT,
+				forceTLS: true,
+				disableStats: true,
+				enabledTransports: ["ws", "wss"],
+			})
+				.subscribe("chat")
+				.bind("message", (message: unknown) => {
+					if (typeof message === "object" && message !== null && "firstMessage" in message)
+						setUserCount((prev) => prev + 1)
+
+
+
+				})
+		)
+
+		return () => {
+			channelPromise.then((channel) => channel.unsubscribe())
+		}
+	}, [])
+
 
 	return (
 		<main className="flex h-screen flex-col items-center justify-center bg-primary">
@@ -55,6 +92,15 @@ export default function Landing() {
 					send
 				</button>
 			</form>
+
+
+			<div className="py-4" />
+
+
+			<h1 className="text-5xl font-bold text-secondary">
+				{userCount} already here
+			</h1>
+
 		</main>
 	)
 }

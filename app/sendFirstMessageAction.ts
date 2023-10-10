@@ -49,6 +49,7 @@ const sendFirstMessageAction = zact(z.object({ content: z.string() }))(
 			userId,
 			content,
 			sentAt,
+			firstMessage: true
 		})
 
 		await Promise.all([
